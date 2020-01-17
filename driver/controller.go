@@ -150,7 +150,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	// TODO: Snapshots with GetVolumeContentSource
 
 	log.WithField("volume_req", diskCreateRequest).Info("creating volume")
-	result, _, err := ychelpers.GetResult(ctx, d.sdk, func() (*operation.Operation, error) {
+	result, _, err := ychelpers.WaitForResult(ctx, d.sdk, func() (*operation.Operation, error) {
 		return d.sdk.Compute().Disk().Create(ctx, diskCreateRequest)
 	})
 	if err != nil {
@@ -189,7 +189,7 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 	})
 	log.Info("delete volume called")
 
-	response, _, err := ychelpers.GetResult(ctx, d.sdk, func() (*operation.Operation, error) {
+	response, _, err := ychelpers.WaitForResult(ctx, d.sdk, func() (*operation.Operation, error) {
 		return d.sdk.Compute().Disk().Delete(ctx, &compute.DeleteDiskRequest{
 			DiskId: req.VolumeId,
 		})
@@ -273,7 +273,7 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	}
 
 	// attach the volume to the correct node
-	_, _, err = ychelpers.GetResult(ctx, d.sdk, func() (*operation.Operation, error) {
+	_, _, err = ychelpers.WaitForResult(ctx, d.sdk, func() (*operation.Operation, error) {
 		return d.sdk.Compute().Instance().AttachDisk(ctx, &compute.AttachInstanceDiskRequest{
 			InstanceId: req.NodeId,
 			AttachedDiskSpec: &compute.AttachedDiskSpec{
@@ -329,7 +329,7 @@ func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 		return nil, err
 	}
 
-	_, _, err = ychelpers.GetResult(ctx, d.sdk, func() (*operation.Operation, error) {
+	_, _, err = ychelpers.WaitForResult(ctx, d.sdk, func() (*operation.Operation, error) {
 		return d.sdk.Compute().Instance().DetachDisk(ctx, &compute.DetachInstanceDiskRequest{
 			InstanceId: req.NodeId,
 			Disk:       &compute.DetachInstanceDiskRequest_DiskId{DiskId: req.VolumeId},
@@ -337,6 +337,11 @@ func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	},
 	)
 	if err != nil {
+		grpcStatus := status.Convert(err)
+		if grpcStatus.Code() == codes.InvalidArgument && strings.Contains(grpcStatus.Message(), "Cannot find disk in instance by specified disk ID") {
+			log.Infof("assuming Disk %q is detached since it isn't attached to Instance %q", req.VolumeId, req.NodeId)
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
 		return nil, status.Error(codes.Internal, err.Error())
 		// TODO: Pending Operations handling (events)
 	}
@@ -505,7 +510,7 @@ func (d *Driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 		return &csi.ControllerExpandVolumeResponse{CapacityBytes: disk.Size, NodeExpansionRequired: true}, nil
 	}
 
-	_, _, err = ychelpers.GetResult(ctx, d.sdk, func() (o *operation.Operation, err error) {
+	_, _, err = ychelpers.WaitForResult(ctx, d.sdk, func() (o *operation.Operation, err error) {
 		return d.sdk.Compute().Disk().Update(ctx, &compute.UpdateDiskRequest{
 			DiskId: req.VolumeId,
 			UpdateMask: &field_mask.FieldMask{

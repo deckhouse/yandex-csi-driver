@@ -9,7 +9,7 @@ import (
 	ycsdkoperation "github.com/yandex-cloud/go-sdk/operation"
 )
 
-func GetResult(ctx context.Context, sdk *ycsdk.SDK, origFunc func() (*operation.Operation, error)) (proto.Message, *ycsdkoperation.Operation, error) {
+func WaitForResult(ctx context.Context, sdk *ycsdk.SDK, origFunc func() (*operation.Operation, error)) (proto.Message, *ycsdkoperation.Operation, error) {
 	op, err := sdk.WrapOperation(origFunc())
 	if err != nil {
 		return nil, nil, err
