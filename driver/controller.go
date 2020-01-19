@@ -85,15 +85,19 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return nil, status.Errorf(codes.OutOfRange, "invalid capacity range: %v", err)
 	}
 
+	var zone = d.zone
 	if req.AccessibilityRequirements != nil {
 		for _, t := range req.AccessibilityRequirements.Requisite {
-			region, ok := t.Segments[regionTopologyKey] // FIXME: Proper topology (need to debug)
-			if !ok {
-				continue // nothing to do
+			region, ok := t.Segments[regionTopologyKey]
+			if ok {
+				if region != d.region {
+					return nil, status.Errorf(codes.ResourceExhausted, "volume can be only created in region: %q, got: %q", d.region, region)
+				}
 			}
 
-			if region != d.region {
-				return nil, status.Errorf(codes.ResourceExhausted, "volume can be only created in region: %q, got: %q", d.region, region)
+			zoneStr, ok := t.Segments[zoneTopologyKey]
+			if ok {
+				zone = zoneStr
 			}
 		}
 	}
@@ -105,6 +109,8 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		"storage_size_gibibytes": size / giB,
 		"method":                 "create_volume",
 		"volume_capabilities":    req.VolumeCapabilities,
+		"region":                 d.region,
+		"zone":                   zone,
 	})
 	log.Info("create volume called")
 
@@ -143,7 +149,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		Name:        volumeName,
 		Description: createdByYandex,
 		TypeId:      typeID,
-		ZoneId:      d.zone,
+		ZoneId:      zone,
 		Size:        size,
 	}
 
@@ -166,7 +172,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 				{
 					Segments: map[string]string{
 						regionTopologyKey: d.region,
-						zoneTopologyKey:   d.zone,
+						zoneTopologyKey:   zone,
 					},
 				},
 			},
