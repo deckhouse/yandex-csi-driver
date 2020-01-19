@@ -300,8 +300,8 @@ func (d *Driver) NodeGetInfo(_ context.Context, _ *csi.NodeGetInfoRequest) (*csi
 		// make sure that the driver works on this particular region only
 		AccessibleTopology: &csi.Topology{
 			Segments: map[string]string{
-				"region": d.region,
-				"zone":   d.zone,
+				regionTopologyKey: d.region,
+				zoneTopologyKey:   d.zone,
 			},
 		},
 	}, nil
