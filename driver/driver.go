@@ -78,10 +78,11 @@ type Driver struct {
 	region string
 	zone   string
 
-	srv     *grpc.Server
-	httpSrv http.Server
-	log     *logrus.Entry
-	mounter Mounter
+	srv         *grpc.Server
+	httpSrv     http.Server
+	log         *logrus.Entry
+	resizeLocks *RwMap
+	mounter     Mounter
 
 	sdk *ycloud.SDK
 
@@ -166,6 +167,7 @@ func NewDriver(ep, authKeysStr, folderID, driverName, address string) (*Driver, 
 		zone:              zone,
 		mounter:           newMounter(log),
 		log:               log,
+		resizeLocks:       NewRwMap(),
 		waitActionTimeout: defaultWaitActionTimeout,
 
 		sdk: svc,
