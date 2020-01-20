@@ -1,3 +1,20 @@
+/*
+Copyright 2020 DigitalOcean
+Copyright 2020 Flant
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package driver
 
 import (
@@ -53,6 +70,8 @@ const (
 )
 
 var (
+	volumeResizeRequired = make(map[string]interface{})
+
 	supportedAccessMode = &csi.VolumeCapability_AccessMode{
 		Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 	}
@@ -140,6 +159,14 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 			Volume: &csi.Volume{
 				VolumeId:      vol.Id,
 				CapacityBytes: vol.Size,
+				AccessibleTopology: []*csi.Topology{
+					{
+						Segments: map[string]string{
+							regionTopologyKey: d.region,
+							zoneTopologyKey:   vol.ZoneId,
+						},
+					},
+				},
 			},
 		}, nil
 	}
@@ -233,6 +260,10 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 
 	if req.Readonly {
 		return nil, status.Error(codes.AlreadyExists, "read only Volumes are not supported")
+	}
+
+	if _, ok := volumeResizeRequired[req.VolumeId]; ok {
+		return nil, status.Errorf(codes.Internal, "Resize required, not publishing")
 	}
 
 	log := d.log.WithFields(logrus.Fields{
@@ -526,8 +557,13 @@ func (d *Driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 		})
 	})
 	if err != nil {
+		if status.Code(err) == codes.FailedPrecondition && strings.Contains(status.Convert(err).Message(), "attached to non-stopped instance") {
+			volumeResizeRequired[req.VolumeId] = nil
+			return nil, status.Errorf(codes.Internal, "cannot resize volume %s: %s", req.GetVolumeId(), err.Error())
+		}
 		return nil, status.Errorf(codes.Internal, "cannot resize volume %s: %s", req.GetVolumeId(), err.Error())
 	}
+	delete(volumeResizeRequired, req.VolumeId)
 
 	log = log.WithField("new_volume_size", resizeBytes)
 	log.Info("volume was resized")
