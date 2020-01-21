@@ -1,0 +1,96 @@
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: csi-controller
+  namespace: kube-system
+spec:
+  serviceName: dummy
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csi-controller
+  template:
+    metadata:
+      labels:
+        app: csi-controller
+    spec:
+      tolerations:
+        - operator: Exists
+      serviceAccountName: csi-controller
+      containers:
+      - name: csi-provisioner
+        image: quay.io/k8scsi/csi-provisioner:v1.5.0
+        args:
+        - "--v=5"
+        - "--csi-address=/csi/csi.sock"
+        - "--feature-gates=Topology=true"
+        - "--strict-topology"
+        volumeMounts:
+          - name: socket-dir
+            mountPath: /csi
+      - name: csi-attacher
+        image: quay.io/k8scsi/csi-attacher:v2.1.0
+        args:
+        - "--v=5"
+        - "--csi-address=/csi/csi.sock"
+        volumeMounts:
+          - name: socket-dir
+            mountPath: /csi
+      - name: csi-resizer
+        # https://github.com/flant/external-resizer/tree/faster-workqueue
+        image: flant/external-resizer:v0.4.0-flant.1
+        args:
+        - "--v=5"
+        - "--csi-address=/csi/csi.sock"
+        volumeMounts:
+          - name: socket-dir
+            mountPath: /csi
+      - name: csi-snapshotter
+        image: quay.io/k8scsi/csi-snapshotter:v2.0.0
+        args:
+        - "--v=5"
+        - "--csi-address=/csi/csi.sock"
+        volumeMounts:
+          - name: socket-dir
+            mountPath: /csi
+      - name: csi-controller
+        image: flant/yandex-csi-plugin:v0.9.6
+        args:
+        - "--address=$MY_POD_IP:12302"
+        - "--endpoint=unix:/csi/csi.sock"
+        - "--folder-id="
+        ports:
+          - name: healthz
+            containerPort: 12302
+            protocol: TCP
+        env:
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: YANDEX_AUTH_KEYS
+            valueFrom:
+              secretKeyRef:
+                name: csi-credentials
+                key: serviceAccountJSON
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 12302
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        volumeMounts:
+          - name: socket-dir
+            mountPath: /csi
+      - name: liveness-probe
+        image: quay.io/k8scsi/livenessprobe:v2.0.0
+        args:
+        - --csi-address=/csi/csi.sock
+        volumeMounts:
+          - name: socket-dir
+            mountPath: /csi
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+
