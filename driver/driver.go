@@ -128,7 +128,7 @@ func NewDriver(ep, authKeysStr, folderID, driverName, address string) (*Driver, 
 		return nil, err
 	}
 
-	svc, err := ycloud.Build(ctx, ycloud.Config{Credentials: credentials})
+	sdk, err := ycloud.Build(ctx, ycloud.Config{Credentials: credentials})
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func NewDriver(ep, authKeysStr, folderID, driverName, address string) (*Driver, 
 		version = "dev"
 	}
 
-	//healthChecker := NewHealthChecker(&yandexHealthChecker{account: yandexClient.Account})
+	healthChecker := NewHealthChecker(&yandexHealthChecker{sdk: sdk})
 
 	log := logrus.New().WithFields(logrus.Fields{
 		"region":      region,
@@ -170,9 +170,9 @@ func NewDriver(ep, authKeysStr, folderID, driverName, address string) (*Driver, 
 		resizeLocks:       NewRwMap(),
 		waitActionTimeout: defaultWaitActionTimeout,
 
-		sdk: svc,
+		sdk: sdk,
 
-		//healthChecker: healthChecker,
+		healthChecker: healthChecker,
 	}, nil
 }
 
@@ -224,14 +224,14 @@ func (d *Driver) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to listen: %v", err)
 	}
 	mux := http.NewServeMux()
-	/*mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		err := d.healthChecker.Check(r.Context())
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-	})*/
+	})
 	d.httpSrv = http.Server{
 		Handler: mux,
 	}

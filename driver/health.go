@@ -19,6 +19,11 @@ package driver
 
 import (
 	"context"
+	"fmt"
+	"time"
+
+	"github.com/yandex-cloud/go-genproto/yandex/cloud/endpoint"
+	ycsdk "github.com/yandex-cloud/go-sdk"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -56,4 +61,22 @@ func (c *HealthChecker) Check(ctx context.Context) error {
 	return eg.Wait()
 }
 
-// TODO: Yandex API healthcheck
+var yandexHealthTimeout = 15 * time.Second
+
+type yandexHealthChecker struct {
+	sdk *ycsdk.SDK
+}
+
+func (c *yandexHealthChecker) Name() string {
+	return "yandex"
+}
+
+func (c *yandexHealthChecker) Check(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, yandexHealthTimeout)
+	defer cancel()
+	_, err := c.sdk.ApiEndpoint().ApiEndpoint().List(ctx, &endpoint.ListApiEndpointsRequest{})
+	if err != nil {
+		return fmt.Errorf("checking yandex health: %w", err)
+	}
+	return nil
+}
