@@ -261,9 +261,10 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	}
 
 	log := d.log.WithFields(logrus.Fields{
-		"volume_id": req.VolumeId,
-		"node_id":   req.NodeId,
-		"method":    "controller_publish_volume",
+		"volume_id":   req.VolumeId,
+		"device_name": genDiskID(req.VolumeId),
+		"node_id":     req.NodeId,
+		"method":      "controller_publish_volume",
 	})
 	log.Info("controller publish volume called")
 
