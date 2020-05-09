@@ -59,7 +59,7 @@ spec:
         args:
         - "--address=$(MY_POD_IP):12302"
         - "--endpoint=unix:/csi/csi.sock"
-        - "--folder-id="
+        - "--folder-id=$(YANDEX_FOLDER_ID)"
         ports:
           - name: healthz
             containerPort: 12302
@@ -74,6 +74,11 @@ spec:
               secretKeyRef:
                 name: csi-credentials
                 key: serviceAccountJSON
+          - name: YANDEX_FOLDER_ID
+            valueFrom:
+              secretKeyRef:
+                name: csi-credentials
+                key: cloudFolderID
         readinessProbe:
           httpGet:
             path: /health
