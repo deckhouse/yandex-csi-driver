@@ -24,10 +24,6 @@ spec:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
             - "--kubelet-registration-path=/var/lib/kubelet/plugins/yandex.csi.flant.com/csi.sock"
-          lifecycle:
-            preStop:
-              exec:
-                command: ["/bin/sh", "-c", "rm -rf /registration/yandex.csi.flant.com-reg.sock /csi/csi.sock"]
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
