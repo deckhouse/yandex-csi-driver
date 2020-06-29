@@ -19,15 +19,11 @@ spec:
         - operator: Exists
       containers:
         - name: csi-node-driver-registrar
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.1.0
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.3.0
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
             - "--kubelet-registration-path=/var/lib/kubelet/plugins/yandex.csi.flant.com/csi.sock"
-          lifecycle:
-            preStop:
-              exec:
-                command: ["/bin/sh", "-c", "rm -rf /registration/yandex.csi.flant.com-reg.sock /csi/csi.sock"]
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
@@ -41,7 +37,7 @@ spec:
         - name: csi-node
           securityContext:
             privileged: true
-          image: flant/yandex-csi-plugin:v0.9.6
+          image: flant/yandex-csi-plugin:v0.9.7
           args:
             - "--endpoint=unix:/csi/csi.sock"
           volumeMounts:
