@@ -378,13 +378,7 @@ func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	},
 	)
 	if err != nil {
-		grpcStatus := status.Convert(err)
-		if grpcStatus.Code() == codes.InvalidArgument && strings.Contains(grpcStatus.Message(), "Cannot find disk in instance by specified disk ID") {
-			log.Infof("assuming Disk %q is detached since it isn't attached to Instance %q", req.VolumeId, req.NodeId)
-			return &csi.ControllerUnpublishVolumeResponse{}, nil
-		}
 		return nil, status.Error(codes.Internal, err.Error())
-		// TODO: Pending Operations handling (events)
 	}
 
 	log.Info("volume was detached")
