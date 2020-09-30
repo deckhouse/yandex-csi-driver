@@ -346,13 +346,18 @@ func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 	log.Info("controller unpublish volume called")
 
 	// check if volume exist before trying to detach it
-	_, err := d.sdk.Compute().Disk().Get(ctx, &compute.GetDiskRequest{DiskId: req.VolumeId})
+	disk, err := d.sdk.Compute().Disk().Get(ctx, &compute.GetDiskRequest{DiskId: req.VolumeId})
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			log.Info("assuming Disk is detached because it does not exist")
 			return &csi.ControllerUnpublishVolumeResponse{}, nil
 		}
 		return nil, err
+	}
+
+	if len(disk.InstanceIds) == 0 {
+		log.Info("assuming Disk is detached it's not attached to any Instance")
+		return &csi.ControllerUnpublishVolumeResponse{}, nil
 	}
 
 	// check if Instance exist before trying to attach the volume to the droplet
