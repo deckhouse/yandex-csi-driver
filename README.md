@@ -56,7 +56,7 @@ yandex-csi-driver is supported in Kubernetes >=1.15 only.
 **Requirements:**
 
 * `--allow-privileged` flag must be set to true for both the API server and the kubelet
-* `--feature-gates=VolumeSnapshotDataSource=true,KubeletPluginsWatcher=true,CSINodeInfo=true,CSIDriverRegistry=true` feature gate flags must be set to true for both the API server and the kubelet
+* `--feature-gates=VolumeSnapshotDataSource=true,CSINodeInfo=true,CSIDriverRegistry=true` feature gate flags must be set to true for both the API server and the kubelet
 * Mount Propagation needs to be enabled. If you use Docker, the Docker daemon of the cluster nodes must allow shared mounts.
 
 ### Installing driver
