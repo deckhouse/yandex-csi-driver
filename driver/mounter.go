@@ -344,9 +344,9 @@ func (m *mounter) GetStatistics(volumePath string) (volumeStatistics, error) {
 	}
 
 	volStats := volumeStatistics{
-		availableBytes: int64(statfs.Bavail) * statfs.Bsize,
-		totalBytes:     int64(statfs.Blocks) * statfs.Bsize,
-		usedBytes:      (int64(statfs.Blocks) - int64(statfs.Bfree)) * statfs.Bsize,
+		availableBytes: int64(statfs.Bavail) * int64(statfs.Bsize),
+		totalBytes:     int64(statfs.Blocks) * int64(statfs.Bsize),
+		usedBytes:      (int64(statfs.Blocks) - int64(statfs.Bfree)) * int64(statfs.Bsize),
 
 		availableInodes: int64(statfs.Ffree),
 		totalInodes:     int64(statfs.Files),

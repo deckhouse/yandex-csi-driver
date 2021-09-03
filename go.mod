@@ -1,4 +1,4 @@
-module github.com/flant/yandex-csi-driver
+module github.com/deckhouse/yandex-csi-driver
 
 require (
 	github.com/container-storage-interface/spec v1.2.0

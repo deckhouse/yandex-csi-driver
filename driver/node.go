@@ -461,9 +461,7 @@ func (d *Driver) nodePublishVolumeForFileSystem(req *csi.NodePublishVolumeReques
 	target := req.TargetPath
 
 	mnt := req.VolumeCapability.GetMount()
-	for _, flag := range mnt.MountFlags {
-		mountOptions = append(mountOptions, flag)
-	}
+	mountOptions = append(mountOptions, mnt.MountFlags...)
 
 	fsType := "ext4"
 	if mnt.FsType != "" {
