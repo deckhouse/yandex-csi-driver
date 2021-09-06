@@ -27,7 +27,7 @@ import (
 
 	"github.com/yandex-cloud/go-genproto/yandex/cloud/operation"
 
-	"github.com/flant/yandex-csi-driver/ychelpers"
+	"github.com/deckhouse/yandex-csi-driver/ychelpers"
 
 	"github.com/yandex-cloud/go-genproto/yandex/cloud/compute/v1"
 

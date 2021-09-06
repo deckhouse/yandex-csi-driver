@@ -37,7 +37,7 @@ spec:
         - name: csi-node
           securityContext:
             privileged: true
-          image: flant/yandex-csi-plugin:v0.9.7
+          image: registry.deckhouse.io/yandex-csi-driver/yandex-csi-driver:v0.9.11
           args:
             - "--endpoint=unix:/csi/csi.sock"
           volumeMounts:

@@ -53,6 +53,7 @@ func (c *HealthChecker) Check(ctx context.Context) error {
 	var eg errgroup.Group
 
 	for _, check := range c.checks {
+		check := check
 		eg.Go(func() error {
 			return check.Check(ctx)
 		})

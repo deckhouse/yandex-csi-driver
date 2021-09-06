@@ -13,6 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+FROM golang:1.13-alpine as build
+RUN apk add git
+
+WORKDIR /go/src/app
+ADD . /go/src/app
+
+ARG OS="linux"
+ARG ARCH="amd64"
+
+RUN export VERSION=$(cat VERSION)
+RUN export COMMIT=$(git rev-parse HEAD)
+RUN export GIT_TREE_STATE=$(git diff --quiet && echo 'clean' || echo 'dirty')
+
+RUN CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go build -a \
+    -ldflags '-X github.com/deckhouse/yandex-csi-driver/driver.version=${VERSION} -X github.com/deckhouse/yandex-csi-driver/driver.commit=${COMMIT} -X github.com/deckhouse/yandex-csi-driver/driver.gitTreeState=${GIT_TREE_STATE}' \
+    -o /go/bin/yandex-csi-driver \
+    github.com/deckhouse/yandex-csi-driver/cmd/yandex-csi-driver
+
 FROM alpine:3.10
 
 RUN apk add --no-cache ca-certificates \
@@ -22,6 +40,6 @@ RUN apk add --no-cache ca-certificates \
                        blkid \
                        e2fsprogs-extra
 
-ADD yandex-csi-driver /bin/
+COPY --from=build /go/bin/yandex-csi-driver /bin/
 
 ENTRYPOINT ["/bin/yandex-csi-driver"]

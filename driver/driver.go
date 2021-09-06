@@ -30,7 +30,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/flant/yandex-csi-driver/ychelpers"
+	"github.com/deckhouse/yandex-csi-driver/ychelpers"
 
 	ycloud "github.com/yandex-cloud/go-sdk"
 	"github.com/yandex-cloud/go-sdk/iamkey"
