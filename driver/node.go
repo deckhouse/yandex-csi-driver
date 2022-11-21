@@ -20,6 +20,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -127,6 +128,15 @@ func (d *Driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 		} else {
 			log.Info("source device is already formatted")
 		}
+	}
+
+	log.Info("running fsck")
+
+	args := []string{"-a", source}
+	out, err := exec.Command("fsck", args...).CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("fsck failed: %v, output: %q",
+			err, string(out))
 	}
 
 	log.Info("mounting the volume for staging")
