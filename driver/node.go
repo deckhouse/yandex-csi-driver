@@ -18,6 +18,7 @@ limitations under the License.
 package driver
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path/filepath"
@@ -131,11 +132,15 @@ func (d *Driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 
 	log.Info("running fsck")
 
-	args := []string{"-a", source}
-	out, err := exec.Command("fsck", args...).CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("fsck failed: %v, output: %q",
-			err, string(out))
+	executor := exec.New()
+	cmd := executor.Command("fsck", "-a")
+	stdout := bytes.Buffer{}
+	stderr := bytes.Buffer{}
+	cmd.SetStdout(&stdout)
+	cmd.SetStderr(&stderr)
+	if err := cmd.Run(); err != nil {
+		return nil, status.Errorf(codes.Internal,
+			"Fsck failed, stdout: %s, stderr: %s", stdout.String(), stderr.String())
 	}
 
 	log.Info("mounting the volume for staging")
