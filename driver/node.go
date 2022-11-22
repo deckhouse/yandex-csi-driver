@@ -20,7 +20,6 @@ package driver
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
