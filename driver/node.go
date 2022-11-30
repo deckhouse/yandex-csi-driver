@@ -18,9 +18,9 @@ limitations under the License.
 package driver
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"k8s.io/klog"
 	"path/filepath"
 	"strings"
 
@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/resizefs"
+	utilexec "k8s.io/utils/exec"
 	"k8s.io/utils/mount"
 )
 
@@ -42,7 +43,40 @@ const (
 
 	volumeModeBlock      = "block"
 	volumeModeFilesystem = "filesystem"
+
+	HasFilesystemErrors MountErrorType = "HasFilesystemErrors"
+	// 'fsck' found errors and corrected them
+	fsckErrorsCorrected = 1
+	// 'fsck' found errors but exited without correcting them
+	fsckErrorsUncorrected = 4
+	// Error thrown by exec cmd.Run() when process spawned by cmd.Start() completes before cmd.Wait() is called (see - k/k issue #103753)
+	errNoChildProcesses = "wait: no child processes"
+	// Error returned by some `umount` implementations when the specified path is not a mount point
+	errNotMounted = "not mounted"
 )
+
+type MountErrorType string
+
+type MountError struct { // nolint: golint
+	Type    MountErrorType
+	Message string
+}
+
+func (mountError MountError) String() string {
+	return mountError.Message
+}
+
+func (mountError MountError) Error() string {
+	return mountError.Message
+}
+
+func NewMountError(mountErrorValue MountErrorType, format string, args ...interface{}) error {
+	mountError := MountError{
+		Type:    mountErrorValue,
+		Message: fmt.Sprintf(format, args...),
+	}
+	return mountError
+}
 
 var (
 	// This annotation is added to a PV to indicate that the volume should be
@@ -52,6 +86,30 @@ var (
 		"com.flant.csi.yandex/noformat",
 	}
 )
+
+// checkAndRepairFileSystem checks and repairs filesystems using command fsck.
+func checkAndRepairFilesystem(source string) error {
+	klog.V(4).Infof("Checking for issues with fsck on disk: %s", source)
+	args := []string{"-a", source}
+	executor := exec.New()
+	out, err := executor.Command("fsck", args...).CombinedOutput()
+	if err != nil {
+		ee, isExitError := err.(utilexec.ExitError)
+		switch {
+		case err == utilexec.ErrExecutableNotFound:
+			klog.Warningf("'fsck' not found on system; continuing mount without running 'fsck'.")
+		case isExitError && ee.ExitStatus() == fsckErrorsCorrected:
+			klog.Infof("Device %s has errors which were corrected by fsck.", source)
+		case isExitError && ee.ExitStatus() == fsckErrorsUncorrected:
+			return NewMountError(HasFilesystemErrors, "'fsck' found errors on device %s but could not correct them: %s", source, string(out))
+		case isExitError && ee.ExitStatus() > fsckErrorsUncorrected:
+			klog.Infof("`fsck` error %s", string(out))
+		default:
+			klog.Warningf("fsck on device %s failed with error %v, output: %v", source, err, string(out))
+		}
+	}
+	return nil
+}
 
 // NodeStageVolume mounts the volume to a staging path on the node. This is
 // called by the CO before NodePublishVolume and is used to temporary mount the
@@ -130,18 +188,7 @@ func (d *Driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 		}
 	}
 
-	log.Info("running fsck")
-
-	executor := exec.New()
-	cmd := executor.Command("fsck", "-a")
-	stdout := bytes.Buffer{}
-	stderr := bytes.Buffer{}
-	cmd.SetStdout(&stdout)
-	cmd.SetStderr(&stderr)
-	if err := cmd.Run(); err != nil {
-		return nil, status.Errorf(codes.Internal,
-			"Fsck failed, stdout: %s, stderr: %s", stdout.String(), stderr.String())
-	}
+	checkAndRepairFilesystem(source)
 
 	log.Info("mounting the volume for staging")
 
