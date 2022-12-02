@@ -20,18 +20,16 @@ package driver
 import (
 	"context"
 	"fmt"
-	"k8s.io/klog"
 	"path/filepath"
 	"strings"
-
-	"k8s.io/utils/exec"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/resizefs"
-	utilexec "k8s.io/utils/exec"
+	"k8s.io/utils/exec"
 	"k8s.io/utils/mount"
 )
 
@@ -88,15 +86,16 @@ var (
 )
 
 // checkAndRepairFileSystem checks and repairs filesystems using command fsck.
+// ported from original k8s mount-utils library https://github.com/kubernetes/mount-utils/blob/master/mount_linux.go#L450
 func checkAndRepairFilesystem(source string) error {
 	klog.V(4).Infof("Checking for issues with fsck on disk: %s", source)
 	args := []string{"-a", source}
 	executor := exec.New()
 	out, err := executor.Command("fsck", args...).CombinedOutput()
 	if err != nil {
-		ee, isExitError := err.(utilexec.ExitError)
+		ee, isExitError := err.(exec.ExitError)
 		switch {
-		case err == utilexec.ErrExecutableNotFound:
+		case err == exec.ErrExecutableNotFound:
 			klog.Warningf("'fsck' not found on system; continuing mount without running 'fsck'.")
 		case isExitError && ee.ExitStatus() == fsckErrorsCorrected:
 			klog.Infof("Device %s has errors which were corrected by fsck.", source)
