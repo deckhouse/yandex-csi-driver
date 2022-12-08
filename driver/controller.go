@@ -29,7 +29,7 @@ import (
 
 	"github.com/deckhouse/yandex-csi-driver/ychelpers"
 
-	"github.com/yandex-cloud/go-genproto/yandex/cloud/compute/v1"
+	compute "github.com/yandex-cloud/go-genproto/yandex/cloud/compute/v1"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/sirupsen/logrus"

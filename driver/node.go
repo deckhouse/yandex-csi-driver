@@ -47,10 +47,6 @@ const (
 	fsckErrorsCorrected = 1
 	// 'fsck' found errors but exited without correcting them
 	fsckErrorsUncorrected = 4
-	// Error thrown by exec cmd.Run() when process spawned by cmd.Start() completes before cmd.Wait() is called (see - k/k issue #103753)
-	errNoChildProcesses = "wait: no child processes"
-	// Error returned by some `umount` implementations when the specified path is not a mount point
-	errNotMounted = "not mounted"
 )
 
 type MountErrorType string
@@ -187,7 +183,10 @@ func (d *Driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 		}
 	}
 
-	checkAndRepairFilesystem(source)
+	err := checkAndRepairFilesystem(source)
+	if err != nil {
+		return nil, err
+	}
 
 	log.Info("mounting the volume for staging")
 
