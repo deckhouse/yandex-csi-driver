@@ -23,13 +23,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"k8s.io/utils/exec"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/resizefs"
+	"k8s.io/utils/exec"
 	"k8s.io/utils/mount"
 )
 
@@ -41,7 +41,36 @@ const (
 
 	volumeModeBlock      = "block"
 	volumeModeFilesystem = "filesystem"
+
+	HasFilesystemErrors MountErrorType = "HasFilesystemErrors"
+	// 'fsck' found errors and corrected them
+	fsckErrorsCorrected = 1
+	// 'fsck' found errors but exited without correcting them
+	fsckErrorsUncorrected = 4
 )
+
+type MountErrorType string
+
+type MountError struct { // nolint: golint
+	Type    MountErrorType
+	Message string
+}
+
+func (mountError MountError) String() string {
+	return mountError.Message
+}
+
+func (mountError MountError) Error() string {
+	return mountError.Message
+}
+
+func NewMountError(mountErrorValue MountErrorType, format string, args ...interface{}) error {
+	mountError := MountError{
+		Type:    mountErrorValue,
+		Message: fmt.Sprintf(format, args...),
+	}
+	return mountError
+}
 
 var (
 	// This annotation is added to a PV to indicate that the volume should be
@@ -51,6 +80,31 @@ var (
 		"com.flant.csi.yandex/noformat",
 	}
 )
+
+// checkAndRepairFileSystem checks and repairs filesystems using command fsck.
+// ported from original k8s mount-utils library https://github.com/kubernetes/mount-utils/blob/master/mount_linux.go#L450
+func checkAndRepairFilesystem(source string) error {
+	klog.V(4).Infof("Checking for issues with fsck on disk: %s", source)
+	args := []string{"-a", source}
+	executor := exec.New()
+	out, err := executor.Command("fsck", args...).CombinedOutput()
+	if err != nil {
+		ee, isExitError := err.(exec.ExitError)
+		switch {
+		case err == exec.ErrExecutableNotFound:
+			klog.Warningf("'fsck' not found on system; continuing mount without running 'fsck'.")
+		case isExitError && ee.ExitStatus() == fsckErrorsCorrected:
+			klog.Infof("Device %s has errors which were corrected by fsck.", source)
+		case isExitError && ee.ExitStatus() == fsckErrorsUncorrected:
+			return NewMountError(HasFilesystemErrors, "'fsck' found errors on device %s but could not correct them: %s", source, string(out))
+		case isExitError && ee.ExitStatus() > fsckErrorsUncorrected:
+			klog.Infof("`fsck` error %s", string(out))
+		default:
+			klog.Warningf("fsck on device %s failed with error %v, output: %v", source, err, string(out))
+		}
+	}
+	return nil
+}
 
 // NodeStageVolume mounts the volume to a staging path on the node. This is
 // called by the CO before NodePublishVolume and is used to temporary mount the
@@ -127,6 +181,11 @@ func (d *Driver) NodeStageVolume(_ context.Context, req *csi.NodeStageVolumeRequ
 		} else {
 			log.Info("source device is already formatted")
 		}
+	}
+
+	err := checkAndRepairFilesystem(source)
+	if err != nil {
+		return nil, err
 	}
 
 	log.Info("mounting the volume for staging")
