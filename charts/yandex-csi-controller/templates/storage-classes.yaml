@@ -1,0 +1,45 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: yc-network-hdd
+{{- if  eq "yc-network-hdd" .Values.defaultStorageclass }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+{{- end }}
+provisioner: yandex.csi.flant.com
+parameters:
+  typeID: network-hdd
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: yc-network-ssd
+{{- if  eq "yc-network-ssd" .Values.defaultStorageclass }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+{{- end }}
+provisioner: yandex.csi.flant.com
+parameters:
+  typeID: network-ssd
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: yc-network-ssd-nonreplicated
+{{- if  eq "yc-network-ssd-nonreplicated" .Values.defaultStorageclass }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+{{- end }}
+provisioner: yandex.csi.flant.com
+parameters:
+  typeID: network-ssd-nonreplicated
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete

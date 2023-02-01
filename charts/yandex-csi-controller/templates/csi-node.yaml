@@ -1,0 +1,206 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: {{ include "yandex-csi-node.name" . }}
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: {{ include "yandex-csi-node.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "yandex-csi-node.name" . }}
+    spec:
+      
+      serviceAccountName: {{ include "yandex-csi-node.name" . }}
+      hostNetwork: true
+      tolerations:
+        - operator: Exists
+
+      containers:
+        {{- with .Values.sidecars.nodeDriverRegistrar }}
+        - name: csi-node-driver-registrar
+
+          image: {{ .image.repository }}:{{ .image.tag }}
+          imagePullPolicy: {{ .image.pullPolicy }}
+
+          args:
+            - --csi-address=$(ADDRESS)
+            - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+            {{- with .extraArgs }}
+              {{- range $k, $v := . }}
+            - --{{- $k }}={{ $v -}}
+              {{end}}
+            {{- end }}
+
+          env:
+            - name: ADDRESS
+              value: "{{ $.Values.defaults.csiPath }}/{{ $.Values.defaults.csiSockName }}"
+            - name: DRIVER_REG_SOCK_PATH
+              value: {{ $.Values.defaults.kubeletPath }}/plugins/{{ $.Values.defaults.csiPluginName }}/{{ $.Values.defaults.csiSockName }}
+          
+          {{- with .resources | default $.Values.defaults.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          {{- with .securityContext | default $.Values.defaults.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          terminationMessagePath: {{ .terminationMessagePath | default $.Values.defaults.terminationMessagePath }}
+          terminationMessagePolicy: {{ .terminationMessagePolicy | default $.Values.defaults.terminationMessagePolicy }}
+
+          volumeMounts:
+            - mountPath: {{ $.Values.defaults.csiPath }}
+              name: plugin-dir
+            - mountPath: /registration
+              name: registration-dir
+        {{- end }}
+        {{- with .Values.sidecars.livenessprobe }}
+        - name: csi-livenessprobe
+          args:
+            - --csi-address=$(ADDRESS)
+            - --health-port={{ $.Values.node.ports.healthPort }}
+            {{- with .extraArgs }}
+              {{- range $k, $v := . }}
+            - --{{- $k }}={{ $v -}}
+              {{end}}
+            {{- end }}
+
+          env:
+            - name: ADDRESS
+              value: "{{ $.Values.defaults.csiPath }}/{{ $.Values.defaults.csiSockName }}"
+
+          image: {{ .image.repository }}:{{ .image.tag }}
+          imagePullPolicy: {{ .image.pullPolicy }}
+
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: {{ $.Values.node.ports.healthPort }}
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: {{ $.Values.node.ports.healthPort }}
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+
+          {{- with .resources | default $.Values.defaults.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          {{- with .securityContext | default $.Values.defaults.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          terminationMessagePath: {{ .terminationMessagePath | default $.Values.defaults.terminationMessagePath }}
+          terminationMessagePolicy: {{ .terminationMessagePolicy | default $.Values.defaults.terminationMessagePolicy }}
+
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: {{ $.Values.defaults.csiPath }}
+        {{- end }}
+        {{- with .Values.node }}
+        - name: {{ include "yandex-csi-node.name" . }}
+          args:
+            - --endpoint=unix://$(ADDRESS)
+            - --address=$(POD_IP):{{ .ports.addressPort }}
+          env:
+            - name: ADDRESS
+              value: "{{ $.Values.defaults.csiPath }}/{{ $.Values.defaults.csiSockName }}"
+
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+
+            - name: CSI_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+
+            - name: YANDEX_AUTH_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "yandex-csi-controller.name" $ }}
+                  key: serviceAccountJSON
+
+          image: {{ $.Values.image.repository }}:{{ $.Values.image.tag | default (printf "v%s" $.Chart.AppVersion) }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: {{ $.Values.node.ports.healthPort }}
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+
+          {{- with .resources | default $.Values.defaults.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          {{- with .securityContext | default $.Values.defaults.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          terminationMessagePath: {{ .terminationMessagePath | default $.Values.defaults.terminationMessagePath }}
+          terminationMessagePolicy: {{ .terminationMessagePolicy | default $.Values.defaults.terminationMessagePolicy }}
+
+          volumeMounts:
+            - mountPath: {{ $.Values.defaults.csiPath }}
+              name: plugin-dir
+            - mountPath: {{ $.Values.defaults.kubeletPath }}
+              mountPropagation: Bidirectional
+              name: kubelet-dir
+            - mountPath: /dev
+              name: device-dir
+        {{- end }}
+
+
+      dnsPolicy: ClusterFirst
+
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsNonRoot: false
+        runAsUser: 0
+
+      volumes:
+        - hostPath:
+            path: {{ .Values.defaults.kubeletPath }}
+            type: Directory
+          name: kubelet-dir
+        - hostPath:
+            path: {{ .Values.defaults.kubeletPath }}/plugins/{{ .Values.defaults.csiPluginName }}
+            type: DirectoryOrCreate
+          name: plugin-dir
+        - hostPath:
+            path: {{ .Values.defaults.kubeletPath }}/plugins_registry/
+            type: Directory
+          name: registration-dir
+        - hostPath:
+            path: /dev
+            type: Directory
+          name: device-dir
