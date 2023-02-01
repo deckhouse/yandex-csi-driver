@@ -1,0 +1,354 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+  name: {{ include "yandex-csi-controller.name" . }}
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: {{ include "yandex-csi-controller.name" . }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {{ include "yandex-csi-controller.name" . }}
+    spec:
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ include "yandex-csi-controller.name" . }}
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+
+      containers:
+      {{- with .Values.sidecars.provisioner }}
+      - name: csi-provisioner
+        args:
+          - --csi-address=$(ADDRESS)
+          - --leader-election-namespace=$(NAMESPACE)
+          - --enable-capacity
+          - --leader-election=true
+          - --strict-topology
+          {{- with .extraArgs }}
+            {{- range $k, $v := . }}
+          - --{{- $k }}={{ $v -}}
+            {{end}}
+          {{- end }}
+
+        env:
+          - name: ADDRESS
+            value: "{{ $.Values.defaults.csiPath }}/{{ $.Values.defaults.csiSockName }}"
+
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+
+        image: {{ .image.repository }}:{{ .image.tag }}
+        imagePullPolicy: {{ .image.pullPolicy }}
+        
+        {{- with .resources | default $.Values.defaults.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        {{- with .securityContext | default $.Values.defaults.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        terminationMessagePath: {{ .terminationMessagePath | default $.Values.defaults.terminationMessagePath }}
+        terminationMessagePolicy: {{ .terminationMessagePolicy | default $.Values.defaults.terminationMessagePolicy }}
+
+        volumeMounts:
+          - name: socket-dir
+            mountPath: {{ $.Values.defaults.csiPath }}
+      {{- end }}
+
+      {{- with .Values.sidecars.attacher }}
+      - name: csi-attacher
+        args:
+          - --csi-address=$(ADDRESS)
+          - --leader-election=true
+          - --leader-election-namespace=$(NAMESPACE)
+          {{- with .extraArgs }}
+            {{- range $k, $v := . }}
+          - --{{- $k }}={{ $v -}}
+            {{end}}
+          {{- end }}
+
+        env:
+          - name: ADDRESS
+            value: "{{ $.Values.defaults.csiPath }}/{{ $.Values.defaults.csiSockName }}"
+            
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+
+        image: {{ .image.repository }}:{{ .image.tag }}
+        imagePullPolicy: {{ .image.pullPolicy }}
+        
+        {{- with .resources | default $.Values.defaults.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        {{- with .securityContext | default $.Values.defaults.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        terminationMessagePath: {{ .terminationMessagePath | default $.Values.defaults.terminationMessagePath }}
+        terminationMessagePolicy: {{ .terminationMessagePolicy | default $.Values.defaults.terminationMessagePolicy }}
+
+        volumeMounts:
+          - name: socket-dir
+            mountPath: {{ $.Values.defaults.csiPath }}
+
+      {{- end }}
+
+      {{- with .Values.sidecars.resizer }}
+      - name: csi-resizer
+        args:
+          - --csi-address=$(ADDRESS)
+          - --leader-election=true
+          - --leader-election-namespace=$(NAMESPACE)
+          {{- with .extraArgs }}
+            {{- range $k, $v := . }}
+          - --{{- $k }}={{ $v -}}
+            {{end}}
+          {{- end }}
+
+        env:
+        - name: ADDRESS
+          value: "{{ $.Values.defaults.csiPath }}/{{ $.Values.defaults.csiSockName }}"
+
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+
+        image: {{ .image.repository }}:{{ .image.tag }}
+        imagePullPolicy: {{ .image.pullPolicy }}
+        
+        {{- with .resources | default $.Values.defaults.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        {{- with .securityContext | default $.Values.defaults.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        terminationMessagePath: {{ .terminationMessagePath | default $.Values.defaults.terminationMessagePath }}
+        terminationMessagePolicy: {{ .terminationMessagePolicy | default $.Values.defaults.terminationMessagePolicy }}
+
+        volumeMounts:
+          - name: socket-dir
+            mountPath: {{ $.Values.defaults.csiPath }}
+
+      {{- end }}
+
+      {{- with .Values.sidecars.snapshotter }}
+      - name: csi-snapshotter
+        args:
+          - --csi-address=$(ADDRESS)
+          - --leader-election=true
+          - --leader-election-namespace=$(NAMESPACE)
+          {{- with .extraArgs }}
+            {{- range $k, $v := . }}
+          - --{{- $k }}={{ $v -}}
+            {{end}}
+          {{- end }}
+
+        env:
+          - name: ADDRESS
+            value: "{{ $.Values.defaults.csiPath }}/{{ $.Values.defaults.csiSockName }}"
+
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+
+        image: {{ .image.repository }}:{{ .image.tag }}
+        imagePullPolicy: {{ .image.pullPolicy }}
+        
+        {{- with .resources | default $.Values.defaults.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        {{- with .securityContext | default $.Values.defaults.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        terminationMessagePath: {{ .terminationMessagePath | default $.Values.defaults.terminationMessagePath }}
+        terminationMessagePolicy: {{ .terminationMessagePolicy | default $.Values.defaults.terminationMessagePolicy }}
+
+        volumeMounts:
+          - name: socket-dir
+            mountPath: {{ $.Values.defaults.csiPath }}
+
+      {{- end }}
+
+      {{- with .Values.sidecars.livenessprobe }}
+      - name: csi-livenessprobe
+        args:
+          - --csi-address=$(ADDRESS)
+          - --health-port={{ $.Values.controller.ports.healthPort }}
+          {{- with .extraArgs }}
+            {{- range $k, $v := . }}
+          - --{{- $k }}={{ $v -}}
+            {{end}}
+          {{- end }}
+
+        env:
+          - name: ADDRESS
+            value: "{{ $.Values.defaults.csiPath }}/{{ $.Values.defaults.csiSockName }}"
+
+        image: {{ .image.repository }}:{{ .image.tag }}
+        imagePullPolicy: {{ .image.pullPolicy }}
+
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: {{ $.Values.controller.ports.healthPort }}
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: {{ $.Values.controller.ports.healthPort }}
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+
+        {{- with .resources | default $.Values.defaults.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        {{- with .securityContext | default $.Values.defaults.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        terminationMessagePath: {{ .terminationMessagePath | default $.Values.defaults.terminationMessagePath }}
+        terminationMessagePolicy: {{ .terminationMessagePolicy | default $.Values.defaults.terminationMessagePolicy }}
+
+        volumeMounts:
+          - name: socket-dir
+            mountPath: {{ $.Values.defaults.csiPath }}
+      {{- end }}
+
+      {{- with .Values.controller }}
+      - name: csi-controller
+        args:
+          - --address=$(POD_IP):{{ .ports.addressPort }}
+          - --endpoint=unix://$(ADDRESS)
+          - --folder-id=$(YANDEX_FOLDER_ID)
+        env:
+          - name: ADDRESS
+            value: "{{ $.Values.defaults.csiPath }}/{{ $.Values.defaults.csiSockName }}"
+
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+
+          - name: YANDEX_AUTH_KEYS
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "yandex-csi-controller.name" $ }}
+                key: serviceAccountJSON
+
+          - name: YANDEX_FOLDER_ID
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "yandex-csi-controller.name" $ }}
+                key: folderID
+
+        image: {{ $.Values.image.repository }}:{{ $.Values.image.tag | default (printf "v%s" $.Chart.AppVersion) }}
+        imagePullPolicy: {{ $.Values.image.pullPolicy }}
+
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: {{ $.Values.controller.ports.healthPort }}
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+
+        {{- with .resources | default $.Values.defaults.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        {{- with .securityContext | default $.Values.defaults.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        terminationMessagePath: {{ .terminationMessagePath | default $.Values.defaults.terminationMessagePath }}
+        terminationMessagePolicy: {{ .terminationMessagePolicy | default $.Values.defaults.terminationMessagePolicy }}
+
+        volumeMounts:
+          - mountPath: {{ $.Values.defaults.csiPath }}
+            name: socket-dir
+      {{- end }}
+
+      dnsPolicy: Default
+      hostNetwork: true
+      priorityClassName: system-cluster-critical
+      restartPolicy: Always
+      schedulerName: default-scheduler
+
+      securityContext:
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+
+      serviceAccount: {{ include "yandex-csi-controller.name" . }}
+      serviceAccountName: {{ include "yandex-csi-controller.name" . }}
+      terminationGracePeriodSeconds: 30
+
+      tolerations:
+        - operator: Exists
+
+      volumes:
+        - emptyDir: {}
+          name: socket-dir

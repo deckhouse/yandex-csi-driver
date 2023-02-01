@@ -1,0 +1,160 @@
+serviceAccountJSON: ""
+folderID: ""
+
+# defaultStorageclass: 
+# "yc-network-hdd"
+# "yc-network-ssd"
+# "yc-network-ssd-nonreplicated" 
+defaultStorageclass: "yc-network-hdd"
+
+sidecars:
+  nodeDriverRegistrar:
+    image:
+      pullPolicy: IfNotPresent
+      repository: quay.io/k8scsi/csi-node-driver-registrar
+      tag: v1.3.0
+
+    extraArgs:
+      v: 2
+    resources: {}
+    securityContext: {}
+
+    # terminationMessagePath: /dev/termination-log
+    # terminationMessagePolicy: File
+          
+  provisioner:
+    image:
+      pullPolicy: IfNotPresent
+      repository: k8s.gcr.io/sig-storage/csi-provisioner
+      tag: v3.1.0
+
+    extraArgs:
+      default-fstype: ext4
+      feature-gates: "Topology=true"
+      capacity-ownerref-level: 2
+      worker-threads: 10
+      v: 5
+      timeout: 600s
+      
+
+    resources: {}
+    securityContext: {}
+
+    # terminationMessagePath: /dev/termination-log
+    # terminationMessagePolicy: File
+
+
+  attacher:
+    image: 
+      pullPolicy: IfNotPresent
+      repository: k8s.gcr.io/sig-storage/csi-attacher
+      tag: v3.4.0
+
+    extraArgs:
+      v: 5
+      timeout: 600s
+      worker-threads: 10
+
+    resources: {}
+    securityContext: {}
+
+    # terminationMessagePath: /dev/termination-log
+    # terminationMessagePolicy: File
+
+  resizer:
+    image: 
+      pullPolicy: IfNotPresent
+      repository: k8s.gcr.io/sig-storage/csi-resizer
+      tag: v1.5.0
+
+    extraArgs:
+      v: 5
+      timeout: 600s
+      workers: 10
+
+    resources: {}
+    securityContext: {}
+
+    # terminationMessagePath: /dev/termination-log
+    # terminationMessagePolicy: File
+
+
+  snapshotter:
+    image: 
+      pullPolicy: IfNotPresent
+      repository: k8s.gcr.io/sig-storage/csi-snapshotter
+      tag: v5.0.1
+
+    extraArgs:
+      v: 5
+      timeout: 600s
+      worker-threads: 10
+
+    resources: {}
+    securityContext: {}
+
+    # terminationMessagePath: /dev/termination-log
+    # terminationMessagePolicy: File
+
+  livenessprobe:
+    image: 
+      pullPolicy: IfNotPresent
+      repository: k8s.gcr.io/sig-storage/livenessprobe
+      tag: v2.5.0
+
+    extraArgs: {}
+    resources: {}
+    securityContext: {}
+
+    # terminationMessagePath: /dev/termination-log
+    # terminationMessagePolicy: File
+
+image: 
+  pullPolicy: IfNotPresent
+  repository: registry.deckhouse.io/yandex-csi-driver/yandex-csi-driver
+  # Overrides the image tag whose default is v{{ .Chart.AppVersion }}
+  tag: ""
+
+defaults:
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      ephemeral-storage: 50Mi
+      cpu: 100m
+      memory: 128Mi
+
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+
+  terminationMessagePath: /dev/termination-log
+  terminationMessagePolicy: File
+
+  csiPath: /csi/
+  csiSockName: csi.sock
+  csiPluginName: yandex.csi.flant.com
+  kubeletPath: /var/lib/kubelet
+
+controller:
+  ports:
+    healthPort: 9809
+    addressPort: 12302
+
+  extraArgs: {}
+  resources: {}
+
+node:
+  ports:
+    healthPort: 9909
+    addressPort: 12402
+
+  extraArgs:
+    v: 5
+
+  resources: {}
+  securityContext:
+    privileged: true
+    readOnlyRootFilesystem: true
