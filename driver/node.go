@@ -25,6 +25,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/sirupsen/logrus"
+	"github.com/yandex-cloud/go-genproto/yandex/cloud/compute/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
@@ -35,9 +36,6 @@ import (
 
 const (
 	diskIDPath = "/dev/disk/by-id"
-
-	// See: https://cloud.yandex.ru/docs/compute/concepts/limits
-	maxVolumesPerNode = 7
 
 	volumeModeBlock      = "block"
 	volumeModeFilesystem = "filesystem"
@@ -369,6 +367,77 @@ func (d *Driver) NodeGetCapabilities(_ context.Context, _ *csi.NodeGetCapabiliti
 // by the CO in ControllerPublishVolume.
 func (d *Driver) NodeGetInfo(_ context.Context, _ *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	d.log.WithField("method", "node_get_info").Info("node get info called")
+
+	instance, err := d.sdk.Compute().Instance().Get(context.TODO(), &compute.GetInstanceRequest{
+		InstanceId: d.hostID,
+		View:       0,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	const bootDisksCount = 1
+	networkInterfacesCount := int64(len(instance.GetNetworkInterfaces()))
+	secondaryDisksCount := int64(len(instance.GetSecondaryDisks()))
+	localDisksCount := int64(len(instance.GetLocalDisks()))
+	filesystemsCount := int64(len(instance.GetFilesystems()))
+
+	var nonCSISecondaryDisksCount = localDisksCount + filesystemsCount
+	for _, disk := range instance.GetSecondaryDisks() {
+		if !strings.HasPrefix(disk.DeviceName, "csi-") {
+			nonCSISecondaryDisksCount++
+		}
+	}
+
+	// See: https://cloud.yandex.ru/docs/compute/concepts/limits
+	// When a VM is starting, a maximum of 14 devices, including the boot disk and a NIC, can be connected to it. Other devices must be connected to a running VM. Please note: If you restart a VM with more than 14 devices connected, it will not be able to load and run.
+	var disksLimit int64
+
+	switch instance.GetPlatformId() {
+	// Intel Broadwell, Intel Broadwell with NVIDIA® Tesla® V100
+	case "standard-v1", "gpu-standard-v1":
+		if instance.GetResources().Cores > 18 {
+			disksLimit = 14
+		} else {
+			disksLimit = 8
+		}
+	// Intel Cascade Lake, Intel Cascade Lake with NVIDIA® Tesla® V100
+	case "standard-v2", "gpu-standard-v2":
+		if instance.GetResources().Cores > 20 {
+			disksLimit = 14
+		} else {
+			disksLimit = 8
+		}
+	// Intel Ice Lake, Ice Lake Compute-optimized
+	case "standard-v3", "highfreq-v3":
+		if instance.GetResources().Cores > 32 {
+			disksLimit = 14
+		} else {
+			disksLimit = 8
+		}
+	// other
+	default:
+		disksLimit = 8
+	}
+
+	var maxVolumesPerNode int64
+
+	if bootDisksCount+secondaryDisksCount+networkInterfacesCount < 14 {
+		maxVolumesPerNode = disksLimit - bootDisksCount - nonCSISecondaryDisksCount
+	} else {
+		maxVolumesPerNode = disksLimit - bootDisksCount - nonCSISecondaryDisksCount - networkInterfacesCount
+	}
+
+	d.log.WithFields(logrus.Fields{
+		"secondaryDisksCount":       secondaryDisksCount,
+		"localDisksCount":           localDisksCount,
+		"filesystemsCount":          filesystemsCount,
+		"networkInterfacesCount":    networkInterfacesCount,
+		"nonCSISecondaryDisksCount": nonCSISecondaryDisksCount,
+		"disksLimit":                disksLimit,
+		"maxVolumesPerNode":         maxVolumesPerNode,
+	}).Info()
+
 	return &csi.NodeGetInfoResponse{
 		NodeId:            d.hostID,
 		MaxVolumesPerNode: maxVolumesPerNode,

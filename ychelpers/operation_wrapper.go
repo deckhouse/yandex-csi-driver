@@ -20,10 +20,10 @@ package ychelpers
 import (
 	"context"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/yandex-cloud/go-genproto/yandex/cloud/operation"
 	ycsdk "github.com/yandex-cloud/go-sdk"
 	ycsdkoperation "github.com/yandex-cloud/go-sdk/operation"
+	"google.golang.org/protobuf/proto"
 )
 
 func WaitForResult(ctx context.Context, sdk *ycsdk.SDK, origFunc func() (*operation.Operation, error)) (proto.Message, *ycsdkoperation.Operation, error) {

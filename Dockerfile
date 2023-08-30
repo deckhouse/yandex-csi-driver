@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.13-alpine as build
+FROM golang:1.15-alpine as build
 RUN apk add git
 
 WORKDIR /go/src/app
@@ -31,7 +31,7 @@ RUN CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go build -a \
     -o /go/bin/yandex-csi-driver \
     github.com/deckhouse/yandex-csi-driver/cmd/yandex-csi-driver
 
-FROM alpine:3.10
+FROM alpine:3.18
 
 RUN apk add --no-cache ca-certificates \
                        e2fsprogs \
