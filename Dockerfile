@@ -37,6 +37,7 @@ RUN apk add --no-cache ca-certificates \
                        e2fsprogs \
                        findmnt \
                        xfsprogs \
+                       xfsprogs-extra \
                        blkid \
                        e2fsprogs-extra
 
