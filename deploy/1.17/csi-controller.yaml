@@ -54,7 +54,7 @@ spec:
           - name: socket-dir
             mountPath: /csi
       - name: csi-controller
-        image: registry.deckhouse.io/yandex-csi-driver/yandex-csi-driver:v0.9.11
+        image: registry.deckhouse.io/yandex-csi-driver/yandex-csi-driver:v0.10.0
         args:
         - "--address=$(MY_POD_IP):12302"
         - "--endpoint=unix:/csi/csi.sock"
