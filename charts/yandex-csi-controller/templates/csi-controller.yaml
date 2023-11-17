@@ -18,7 +18,7 @@ spec:
       labels:
         app: {{ include "yandex-csi-controller.name" . }}
     spec:
-
+      
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -347,8 +347,12 @@ spec:
       terminationGracePeriodSeconds: 30
 
       tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
         - operator: Exists
-
+          effect: NoExecute
+          tolerationSeconds: 300 
+          
       volumes:
         - emptyDir: {}
           name: socket-dir
