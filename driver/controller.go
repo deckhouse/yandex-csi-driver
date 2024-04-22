@@ -62,9 +62,6 @@ const (
 	// the size they provided did not satisfy our requirements
 	defaultVolumeSizeInBytes int64 = 5 * giB
 
-	// createdByYandex is used to tag volumes that are created by this CSI plugin
-	createdByYandex = "Created by Yandex CSI driver"
-
 	regionTopologyKey = "failure-domain.beta.kubernetes.io/region"
 	zoneTopologyKey   = "failure-domain.beta.kubernetes.io/zone"
 )
@@ -172,7 +169,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	diskCreateRequest := &compute.CreateDiskRequest{
 		FolderId:    d.folderID,
 		Name:        volumeName,
-		Description: createdByYandex,
+		Description: d.clusterName,
 		TypeId:      typeID,
 		ZoneId:      zone,
 		Size:        size,
