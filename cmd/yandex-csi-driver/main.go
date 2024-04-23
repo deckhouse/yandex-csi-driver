@@ -35,7 +35,7 @@ func main() {
 		folderID    = flag.String("folder-id", "", "Folder ID")
 		driverName  = flag.String("driver-name", driver.DefaultDriverName, "Name for the driver")
 		address     = flag.String("address", driver.DefaultAddress, "Address to serve on")
-		clusterUUID = flag.String("cluster-name", driver.DefaultClusterUUID, "Cluster UUID")
+		clusterUUID = flag.String("cluster-uuid", driver.DefaultClusterUUID, "Cluster UUID")
 		version     = flag.Bool("version", false, "Print the version and exit.")
 	)
 	flag.Parse()
