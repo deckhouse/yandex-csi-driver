@@ -58,12 +58,12 @@ const (
 	// to create a volume that is larger than what we support
 	maximumVolumeSizeInBytes int64 = 4398046511104
 
-	// createdByYandex is used to tag volumes that are created by this CSI plugin
-	createdByYandex = "Created by Yandex CSI driver"
-
 	// defaultVolumeSizeInBytes is used when the user did not provide a size or
 	// the size they provided did not satisfy our requirements
 	defaultVolumeSizeInBytes int64 = 5 * giB
+
+	// createdByYandex is used to tag volumes that are created by this CSI plugin
+	createdByYandex = "Created by Yandex CSI driver"
 
 	regionTopologyKey = "failure-domain.beta.kubernetes.io/region"
 	zoneTopologyKey   = "failure-domain.beta.kubernetes.io/zone"
