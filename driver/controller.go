@@ -173,7 +173,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		FolderId:    d.folderID,
 		Name:        volumeName,
 		Description: createdByYandex,
-		Labels:      map[string]string{"cluster_uuid": d.clusterName},
+		Labels:      map[string]string{"cluster_uuid": d.clusterUUID},
 		TypeId:      typeID,
 		ZoneId:      zone,
 		Size:        size,

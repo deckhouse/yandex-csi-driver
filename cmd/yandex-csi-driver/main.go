@@ -35,7 +35,7 @@ func main() {
 		folderID    = flag.String("folder-id", "", "Folder ID")
 		driverName  = flag.String("driver-name", driver.DefaultDriverName, "Name for the driver")
 		address     = flag.String("address", driver.DefaultAddress, "Address to serve on")
-		clusterName = flag.String("cluster-name", driver.DefaultClusterName, "Cluster name")
+		clusterUUID = flag.String("cluster-name", driver.DefaultClusterUUID, "Cluster UUID")
 		version     = flag.Bool("version", false, "Print the version and exit.")
 	)
 	flag.Parse()
@@ -47,7 +47,7 @@ func main() {
 
 	authKeys := os.Getenv("YANDEX_AUTH_KEYS")
 
-	drv, err := driver.NewDriver(*endpoint, authKeys, *folderID, *driverName, *address, *clusterName)
+	drv, err := driver.NewDriver(*endpoint, authKeys, *folderID, *driverName, *address, *clusterUUID)
 	if err != nil {
 		log.Fatalln(err)
 	}

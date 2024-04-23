@@ -48,7 +48,7 @@ const (
 	// DefaultAddress is the default address that the csi plugin will serve its
 	// http handler on.
 	DefaultAddress           = "127.0.0.1:12302"
-	DefaultClusterName       = "default"
+	DefaultClusterUUID       = "default"
 	defaultWaitActionTimeout = 5 * time.Minute
 )
 
@@ -78,7 +78,7 @@ type Driver struct {
 	region string
 	zone   string
 
-	clusterName string
+	clusterUUID string
 
 	srv         *grpc.Server
 	httpSrv     http.Server
@@ -111,7 +111,7 @@ func (d *Driver) ListSnapshots(context.Context, *csi.ListSnapshotsRequest) (*csi
 // NewDriver returns a CSI plugin that contains the necessary gRPC
 // interfaces to interact with Kubernetes over unix domain sockets for
 // managaing Yandex Disks
-func NewDriver(ep, authKeysStr, folderID, driverName, address, clusterName string) (*Driver, error) {
+func NewDriver(ep, authKeysStr, folderID, driverName, address, clusterUUID string) (*Driver, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -172,7 +172,7 @@ func NewDriver(ep, authKeysStr, folderID, driverName, address, clusterName strin
 		resizeLocks:       NewRwMap(),
 		waitActionTimeout: defaultWaitActionTimeout,
 
-		clusterName: clusterName,
+		clusterUUID: clusterUUID,
 
 		sdk: sdk,
 
