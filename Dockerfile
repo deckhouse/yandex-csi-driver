@@ -31,7 +31,7 @@ RUN CGO_ENABLED=0 GOOS=$OS GOARCH=$ARCH go build -a \
     -o /go/bin/yandex-csi-driver \
     github.com/deckhouse/yandex-csi-driver/cmd/yandex-csi-driver
 
-FROM alpine:3.18
+FROM alpine:3.20@sha256:0a4eaa0eecf5f8c050e5bba433f58c052be7587ee8af3e8b3910ef9ab5fbe9f5
 
 RUN apk add --no-cache ca-certificates \
                        e2fsprogs \
