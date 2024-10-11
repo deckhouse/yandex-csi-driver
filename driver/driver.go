@@ -135,14 +135,19 @@ func NewDriver(ep, authKeysStr, folderID, driverName, address, clusterUUID strin
 		return nil, err
 	}
 
+	region := ""
+	zone := ""
+	instanceID := ""
+
 	instanceIdentity, err := ychelpers.GetInstanceIdentity()
 	if err != nil {
-		return nil, err
+		// ignore error if we can't get instance identity
+		logrus.Warningf("failed to get instance identity: %v", err)
+	} else {
+		region = instanceIdentity.Region
+		zone = instanceIdentity.AvailabilityZone
+		instanceID = instanceIdentity.InstanceID
 	}
-
-	region := instanceIdentity.Region
-	zone := instanceIdentity.AvailabilityZone
-	instanceID := instanceIdentity.InstanceID
 
 	if version == "" {
 		version = "dev"

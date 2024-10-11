@@ -69,11 +69,9 @@ const (
 	zoneTopologyKey   = "failure-domain.beta.kubernetes.io/zone"
 )
 
-var (
-	supportedAccessMode = &csi.VolumeCapability_AccessMode{
-		Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-	}
-)
+var supportedAccessMode = &csi.VolumeCapability_AccessMode{
+	Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+}
 
 // CreateVolume creates a new volume from the given request. The function is
 // idempotent.
@@ -102,14 +100,13 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return nil, status.Errorf(codes.OutOfRange, "invalid capacity range: %v", err)
 	}
 
-	var zone = d.zone
+	zone := d.zone
+	region := d.region
 	if req.AccessibilityRequirements != nil {
 		for _, t := range req.AccessibilityRequirements.Requisite {
-			region, ok := t.Segments[regionTopologyKey]
+			regionStr, ok := t.Segments[regionTopologyKey]
 			if ok {
-				if region != d.region {
-					return nil, status.Errorf(codes.ResourceExhausted, "volume can be only created in region: %q, got: %q", d.region, region)
-				}
+				region = regionStr
 			}
 
 			zoneStr, ok := t.Segments[zoneTopologyKey]
@@ -126,7 +123,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		"storage_size_gibibytes": size / giB,
 		"method":                 "create_volume",
 		"volume_capabilities":    req.VolumeCapabilities,
-		"region":                 d.region,
+		"region":                 region,
 		"zone":                   zone,
 	})
 	log.Info("create volume called")
@@ -160,7 +157,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 				AccessibleTopology: []*csi.Topology{
 					{
 						Segments: map[string]string{
-							regionTopologyKey: d.region,
+							regionTopologyKey: region,
 							zoneTopologyKey:   vol.ZoneId,
 						},
 					},
@@ -197,7 +194,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 			AccessibleTopology: []*csi.Topology{
 				{
 					Segments: map[string]string{
-						regionTopologyKey: d.region,
+						regionTopologyKey: region,
 						zoneTopologyKey:   zone,
 					},
 				},
