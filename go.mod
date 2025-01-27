@@ -1,6 +1,6 @@
 module github.com/deckhouse/yandex-csi-driver
 
-go 1.23.5
+go 1.23.0
 
 require (
 	github.com/container-storage-interface/spec v1.11.0
