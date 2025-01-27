@@ -29,7 +29,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/util/resizefs"
+	mountutil "k8s.io/mount-utils"
 	"k8s.io/utils/exec"
 	"k8s.io/utils/mount"
 )
@@ -567,10 +567,7 @@ func (d *Driver) NodeExpandVolume(_ context.Context, req *csi.NodeExpandVolumeRe
 		return nil, status.Errorf(codes.Internal, "NodeExpandVolume unable to get device path for %q: %v", volumePath, err)
 	}
 
-	r := resizefs.NewResizeFs(&mount.SafeFormatAndMount{
-		Interface: mounter,
-		Exec:      exec.New(),
-	})
+	r := mountutil.NewResizeFs(exec.New())
 
 	log = log.WithFields(logrus.Fields{
 		"device_path": devicePath,

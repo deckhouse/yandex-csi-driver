@@ -1,68 +1,38 @@
 module github.com/deckhouse/yandex-csi-driver
 
+go 1.23.5
+
 require (
-	github.com/container-storage-interface/spec v1.2.0
-	github.com/golang/protobuf v1.5.2
-	github.com/sirupsen/logrus v1.4.2
-	github.com/yandex-cloud/go-genproto v0.0.0-20230828085742-c924b3bfee75
-	github.com/yandex-cloud/go-sdk v0.0.0-20230828093337-d401bc1eeaba
-	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20210510120138-977fb7262007
-	google.golang.org/genproto v0.0.0-20211021150943-2b146023228c
-	google.golang.org/grpc v1.41.0
-	google.golang.org/protobuf v1.31.0
-	k8s.io/apimachinery v0.17.1
+	github.com/container-storage-interface/spec v1.11.0
+	github.com/golang/protobuf v1.5.4
+	github.com/sirupsen/logrus v1.9.3
+	github.com/yandex-cloud/go-genproto v0.0.0-20250127124313-5be1a2cc06d4
+	github.com/yandex-cloud/go-sdk v0.0.0-20250127132311-016f84adc072
+	golang.org/x/sync v0.10.0
+	golang.org/x/sys v0.29.0
+	google.golang.org/genproto v0.0.0-20250124145028-65684f501c47
+	google.golang.org/grpc v1.70.0
+	google.golang.org/protobuf v1.36.4
+	k8s.io/apimachinery v0.32.1
 	k8s.io/klog v1.0.0
-	k8s.io/kubernetes v1.17.1
-	k8s.io/utils v0.0.0-20191114184206-e782cd3c129f
+	k8s.io/mount-utils v0.32.1
+	k8s.io/utils v0.0.0-20241210054802-24370beab758
 )
 
-go 1.15
-
-replace k8s.io/api => k8s.io/api v0.17.1
-
-replace k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.17.1
-
-replace k8s.io/apimachinery => k8s.io/apimachinery v0.17.1
-
-replace k8s.io/apiserver => k8s.io/apiserver v0.17.1
-
-replace k8s.io/cli-runtime => k8s.io/cli-runtime v0.17.1
-
-replace k8s.io/client-go => k8s.io/client-go v0.17.1
-
-replace k8s.io/cloud-provider => k8s.io/cloud-provider v0.17.1
-
-replace k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.17.1
-
-replace k8s.io/code-generator => k8s.io/code-generator v0.17.1-beta.0
-
-replace k8s.io/component-base => k8s.io/component-base v0.17.1
-
-replace k8s.io/cri-api => k8s.io/cri-api v0.17.1
-
-replace k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.17.1
-
-replace k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.17.1
-
-replace k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.17.1
-
-replace k8s.io/kube-proxy => k8s.io/kube-proxy v0.17.1
-
-replace k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.17.1
-
-replace k8s.io/kubectl => k8s.io/kubectl v0.17.1
-
-replace k8s.io/kubelet => k8s.io/kubelet v0.17.1
-
-replace k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.17.1
-
-replace k8s.io/metrics => k8s.io/metrics v0.17.1
-
-replace k8s.io/node-api => k8s.io/node-api v0.17.1
-
-replace k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.17.1
-
-replace k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.17.1
-
-replace k8s.io/sample-controller => k8s.io/sample-controller v0.17.1
+require (
+	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/kr/text v0.2.0 // indirect
+	github.com/moby/sys/mountinfo v0.7.2 // indirect
+	github.com/moby/sys/userns v0.1.0 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
+	golang.org/x/net v0.34.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250124145028-65684f501c47 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250124145028-65684f501c47 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+	k8s.io/klog/v2 v2.130.1 // indirect
+)
