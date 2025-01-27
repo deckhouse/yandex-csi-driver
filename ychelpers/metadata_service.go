@@ -20,7 +20,7 @@ package ychelpers
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -48,7 +48,7 @@ func GetInstanceIdentity() (YandexInstanceIdentity, error) {
 		return YandexInstanceIdentity{}, fmt.Errorf("non-200 status %q returned on GET at URL %q", resp.StatusCode, metadataUrl.String())
 	}
 
-	identityBytes, err := ioutil.ReadAll(resp.Body)
+	identityBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return YandexInstanceIdentity{}, err
 	}
@@ -74,7 +74,7 @@ func GetHostname() (string, error) {
 		return "", fmt.Errorf("non-200 status %q returned on GET at URL %q", resp.StatusCode, metadataUrl.String())
 	}
 
-	hostname, err := ioutil.ReadAll(resp.Body)
+	hostname, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
