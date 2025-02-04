@@ -94,6 +94,10 @@ type Driver struct {
 	// be used by the `Identity` service via the `Probe()` method.
 	readyMu sync.Mutex // protects ready
 	ready   bool
+
+	csi.UnimplementedIdentityServer
+	csi.UnimplementedControllerServer
+	csi.UnimplementedNodeServer
 }
 
 func (d *Driver) CreateSnapshot(context.Context, *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
