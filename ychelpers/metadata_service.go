@@ -36,8 +36,8 @@ type YandexInstanceIdentity struct {
 }
 
 var (
-	baseMetadataUrl                   = url.URL{Scheme: "http", Host: yclient.InstanceMetadataAddr}
-	getInstanceIdentityTimeoutSeconds = 15
+	baseMetadataUrl    = url.URL{Scheme: "http", Host: yclient.InstanceMetadataAddr}
+	httpTimeoutSeconds = 15
 )
 
 func GetInstanceIdentity() (YandexInstanceIdentity, error) {
@@ -45,14 +45,17 @@ func GetInstanceIdentity() (YandexInstanceIdentity, error) {
 	metadataUrl.Path = "/latest/dynamic/instance-identity/document"
 
 	client := http.Client{
-		Timeout: time.Duration(getInstanceIdentityTimeoutSeconds) * time.Second,
+		Timeout: time.Duration(httpTimeoutSeconds) * time.Second,
 	}
 
 	resp, err := client.Get(metadataUrl.String())
 	if err != nil {
 		return YandexInstanceIdentity{}, err
 	}
+
+	//nolint:errcheck
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return YandexInstanceIdentity{}, fmt.Errorf("non-200 status %q returned on GET at URL %q", resp.StatusCode, metadataUrl.String())
 	}
@@ -74,11 +77,19 @@ func GetInstanceIdentity() (YandexInstanceIdentity, error) {
 func GetHostname() (string, error) {
 	var metadataUrl = baseMetadataUrl
 	metadataUrl.Path = "/latest/meta-data/hostname"
-	resp, err := http.Get(metadataUrl.String())
+
+	client := http.Client{
+		Timeout: time.Duration(httpTimeoutSeconds) * time.Second,
+	}
+
+	resp, err := client.Get(metadataUrl.String())
 	if err != nil {
 		return "", err
 	}
+
+	//nolint:errcheck
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("non-200 status %q returned on GET at URL %q", resp.StatusCode, metadataUrl.String())
 	}
