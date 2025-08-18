@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	yclient "github.com/yandex-cloud/go-sdk"
 )
@@ -34,12 +35,20 @@ type YandexInstanceIdentity struct {
 	Region           string `json:"region"`
 }
 
-var baseMetadataUrl = url.URL{Scheme: "http", Host: yclient.InstanceMetadataAddr}
+var (
+	baseMetadataUrl                   = url.URL{Scheme: "http", Host: yclient.InstanceMetadataAddr}
+	getInstanceIdentityTimeoutSeconds = 15
+)
 
 func GetInstanceIdentity() (YandexInstanceIdentity, error) {
 	var metadataUrl = baseMetadataUrl
 	metadataUrl.Path = "/latest/dynamic/instance-identity/document"
-	resp, err := http.Get(metadataUrl.String())
+
+	client := http.Client{
+		Timeout: time.Duration(getInstanceIdentityTimeoutSeconds) * time.Second,
+	}
+
+	resp, err := client.Get(metadataUrl.String())
 	if err != nil {
 		return YandexInstanceIdentity{}, err
 	}
