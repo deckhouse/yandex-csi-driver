@@ -119,6 +119,8 @@ func NewDriver(ep, authKeysStr, folderID, driverName, address, clusterUUID strin
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	logrus.Info("starting driver")
+
 	if driverName == "" {
 		driverName = DefaultDriverName
 	}
@@ -142,6 +144,8 @@ func NewDriver(ep, authKeysStr, folderID, driverName, address, clusterUUID strin
 	region := ""
 	zone := ""
 	instanceID := ""
+
+	logrus.Infof("getting instance identity from metadata service")
 
 	instanceIdentity, err := ychelpers.GetInstanceIdentity()
 	if err != nil {

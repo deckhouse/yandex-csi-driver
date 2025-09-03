@@ -100,18 +100,22 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return nil, status.Errorf(codes.OutOfRange, "invalid capacity range: %v", err)
 	}
 
-	zone := d.zone
-	region := d.region
+	zone := ""
+	region := ""
 	if req.AccessibilityRequirements != nil {
 		for _, t := range req.AccessibilityRequirements.Requisite {
 			regionStr, ok := t.Segments[regionTopologyKey]
 			if ok {
 				region = regionStr
+			} else {
+				return nil, status.Error(codes.InvalidArgument, "CreateVolume AccessibilityRequirements missing a region")
 			}
 
 			zoneStr, ok := t.Segments[zoneTopologyKey]
 			if ok {
 				zone = zoneStr
+			} else {
+				return nil, status.Error(codes.InvalidArgument, "CreateVolume AccessibilityRequirements missing a zone")
 			}
 		}
 	}
