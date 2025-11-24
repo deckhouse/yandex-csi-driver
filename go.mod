@@ -8,8 +8,8 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/yandex-cloud/go-genproto v0.0.0-20250127124313-5be1a2cc06d4
 	github.com/yandex-cloud/go-sdk v0.0.0-20250127132311-016f84adc072
-	golang.org/x/sync v0.10.0
-	golang.org/x/sys v0.29.0
+	golang.org/x/sync v0.11.0
+	golang.org/x/sys v0.30.0
 	google.golang.org/genproto v0.0.0-20250124145028-65684f501c47
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.4
@@ -29,8 +29,8 @@ require (
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250124145028-65684f501c47 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250124145028-65684f501c47 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
