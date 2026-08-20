@@ -54,13 +54,25 @@ const (
 	// to create a volume that is smaller than what we support
 	minimumVolumeSizeInBytes int64 = 4194304
 
-	// maximumVolumeSizeInBytes is used to validate that the user is not trying
-	// to create a volume that is larger than what we support
-	maximumVolumeSizeInBytes int64 = 4398046511104
-
 	// defaultVolumeSizeInBytes is used when the user did not provide a size or
 	// the size they provided did not satisfy our requirements
 	defaultVolumeSizeInBytes int64 = 5 * giB
+
+	// defaultBlockSizeInBytes is the block size Yandex.Cloud uses when it is not
+	// set explicitly on disk creation
+	defaultBlockSizeInBytes int64 = 4 * kiB
+
+	// minimumBlockSizeInBytes and maximumBlockSizeInBytes are the boundaries of
+	// the block size supported by Yandex.Cloud, see
+	// https://yandex.cloud/en/docs/compute/operations/disk-create/empty-disk-blocksize
+	minimumBlockSizeInBytes int64 = 4 * kiB
+	maximumBlockSizeInBytes int64 = 128 * kiB
+
+	// maximumVolumeSizePerBlockSizeByte is used to calculate the maximum volume
+	// size supported for a given block size: a disk with the default 4 KiB block
+	// size can grow up to 8 TiB and the limit scales linearly with the block
+	// size, up to 256 TiB for the maximum 128 KiB block
+	maximumVolumeSizePerBlockSizeByte int64 = 8 * tiB / (4 * kiB)
 
 	// createdByYandex is used to tag volumes that are created by this CSI plugin
 	createdByYandex = "Created by Yandex CSI driver"
@@ -95,7 +107,16 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		typeID = id
 	}
 
-	size, err := extractStorage(req.CapacityRange)
+	blockSize := defaultBlockSizeInBytes
+	if rawBlockSize, ok := req.Parameters["blockSize"]; ok && strings.TrimSpace(rawBlockSize) != "" {
+		parsedBlockSize, err := parseBlockSize(rawBlockSize)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "CreateVolume invalid volume parameter \"blockSize\": %v", err)
+		}
+		blockSize = parsedBlockSize
+	}
+
+	size, err := extractStorage(req.CapacityRange, maximumVolumeSize(blockSize))
 	if err != nil {
 		return nil, status.Errorf(codes.OutOfRange, "invalid capacity range: %v", err)
 	}
@@ -125,6 +146,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	log := d.log.WithFields(logrus.Fields{
 		"volume_name":            volumeName,
 		"storage_size_gibibytes": size / giB,
+		"block_size_bytes":       blockSize,
 		"method":                 "create_volume",
 		"volume_capabilities":    req.VolumeCapabilities,
 		"region":                 region,
@@ -153,6 +175,10 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 			return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("invalid option requested size: %d", size))
 		}
 
+		if vol.BlockSize != 0 && vol.BlockSize != blockSize {
+			return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("invalid option requested block size: %d, existing volume block size: %d", blockSize, vol.BlockSize))
+		}
+
 		log.Info("volume already created")
 		return &csi.CreateVolumeResponse{
 			Volume: &csi.Volume{
@@ -178,6 +204,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		TypeId:      typeID,
 		ZoneId:      zone,
 		Size:        size,
+		BlockSize:   blockSize,
 	}
 
 	// TODO: Snapshots with GetVolumeContentSource
@@ -525,7 +552,12 @@ func (d *Driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 		return nil, status.Errorf(codes.Internal, "ControllerExpandVolume could not retrieve existing volume: %v", err)
 	}
 
-	resizeBytes, err := extractStorage(req.GetCapacityRange())
+	blockSize := disk.BlockSize
+	if blockSize == 0 {
+		blockSize = defaultBlockSizeInBytes
+	}
+
+	resizeBytes, err := extractStorage(req.GetCapacityRange(), maximumVolumeSize(blockSize))
 	if err != nil {
 		return nil, status.Errorf(codes.OutOfRange, "ControllerExpandVolume invalid capacity range: %v", err)
 	}
@@ -580,11 +612,55 @@ func (d *Driver) ControllerExpandVolume(ctx context.Context, req *csi.Controller
 	return &csi.ControllerExpandVolumeResponse{CapacityBytes: resizeBytes, NodeExpansionRequired: nodeExpansionRequired}, nil
 }
 
+// maximumVolumeSize returns the maximum volume size supported by Yandex.Cloud
+// for the given block size.
+func maximumVolumeSize(blockSize int64) int64 {
+	return blockSize * maximumVolumeSizePerBlockSizeByte
+}
+
+// parseBlockSize parses the optional "blockSize" storage class parameter. The
+// value is either a plain number of bytes ("8192") or a number with a binary
+// kilobyte suffix ("8K", "8Ki", "8KiB").
+func parseBlockSize(rawBlockSize string) (int64, error) {
+	value := strings.TrimSpace(rawBlockSize)
+
+	multiplier := int64(1)
+	for _, suffix := range []string{"KiB", "KB", "Ki", "K", "k"} {
+		if strings.HasSuffix(value, suffix) {
+			value = strings.TrimSpace(strings.TrimSuffix(value, suffix))
+			multiplier = kiB
+			break
+		}
+	}
+
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%q is not a valid block size", rawBlockSize)
+	}
+
+	if parsed < 0 || parsed > maximumBlockSizeInBytes {
+		return 0, fmt.Errorf("block size (%s) must be between %v and %v",
+			rawBlockSize, formatBytes(minimumBlockSizeInBytes), formatBytes(maximumBlockSizeInBytes))
+	}
+	blockSize := parsed * multiplier
+
+	if blockSize < minimumBlockSizeInBytes || blockSize > maximumBlockSizeInBytes {
+		return 0, fmt.Errorf("block size (%v) must be between %v and %v",
+			formatBytes(blockSize), formatBytes(minimumBlockSizeInBytes), formatBytes(maximumBlockSizeInBytes))
+	}
+
+	if blockSize&(blockSize-1) != 0 {
+		return 0, fmt.Errorf("block size (%v) must be a power of two", formatBytes(blockSize))
+	}
+
+	return blockSize, nil
+}
+
 // extractStorage extracts the storage size in bytes from the given capacity
 // range. If the capacity range is not satisfied it returns the default volume
 // size. If the capacity range is below or above supported sizes, it returns an
 // error.
-func extractStorage(capRange *csi.CapacityRange) (int64, error) {
+func extractStorage(capRange *csi.CapacityRange, maximumVolumeSizeInBytes int64) (int64, error) {
 	if capRange == nil {
 		return defaultVolumeSizeInBytes, nil
 	}
