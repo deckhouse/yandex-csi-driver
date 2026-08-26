@@ -175,8 +175,16 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 			return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("invalid option requested size: %d", size))
 		}
 
-		if vol.BlockSize != 0 && vol.BlockSize != blockSize {
-			return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("invalid option requested block size: %d, existing volume block size: %d", blockSize, vol.BlockSize))
+		// Yandex.Cloud reports the effective block size of every disk, including disks
+		// created before the driver started to set it. Fall back to the default rather
+		// than skipping the check, so that a mismatch is never reported as idempotent.
+		existingBlockSize := vol.BlockSize
+		if existingBlockSize == 0 {
+			existingBlockSize = defaultBlockSizeInBytes
+		}
+
+		if existingBlockSize != blockSize {
+			return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("invalid option requested block size: %d, existing volume block size: %d", blockSize, existingBlockSize))
 		}
 
 		log.Info("volume already created")
