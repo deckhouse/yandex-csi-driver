@@ -43,6 +43,25 @@ Important notes:
 * Expanding a volume that is larger than the target size will have no effect. The PVC object status section will continue to represent the actual volume capacity.
 * Resizing volumes other than through the PVC object (e.g., the DigitalOcean cloud control panel) is not recommended as this can potentially cause conflicts. Additionally, size updates will not be reflected in the PVC object status section immediately, and the section will eventually show the actual volume capacity.
 
+### Disk Block Size
+
+The block size of a disk can optionally be set with the `blockSize` StorageClass parameter. The value is either a plain number of bytes (`8192`) or a number with a binary kilobyte suffix (`8K`, `8Ki`, `8KiB`). Allowed values are powers of two from 4 KiB to 128 KiB, as described in the [Yandex.Cloud documentation](https://yandex.cloud/en/docs/compute/operations/disk-create/empty-disk-blocksize). When the parameter is omitted, the Yandex.Cloud default of 4 KiB is used.
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: yc-network-ssd-64k
+provisioner: yandex.csi.flant.com
+parameters:
+  typeID: network-ssd
+  blockSize: 64Ki
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+```
+
+The block size defines the maximum size of a network disk: 8 TiB for the default 4 KiB block, and twice as much for every next block size, up to 256 TiB for a 128 KiB block. The block size cannot be changed after a disk is created.
+
 ### Volume Statistics
 
 Volume statistics are exposed through the CSI-conformant endpoints. Monitoring systems such as Prometheus can scrape metrics and provide insights into volume usage.
